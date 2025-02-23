@@ -7,6 +7,7 @@ from io import BytesIO
 from functools import lru_cache
 import signal
 from typing import Generator
+import webbrowser
 
 from PIL import Image
 import spotipy
@@ -22,6 +23,8 @@ class Config:
     client_id: str = ""
     redirect_uri: str = ""
     font: str = "DejaVuSans.ttf"
+    brightness: int = 25
+    simulated: bool = False
 
     @classmethod
     def load(cls, path: os.PathLike) -> "Config":
@@ -71,11 +74,18 @@ def main():
 
 
 class Screen:
-    def __init__(self, simulated: bool = False):
-        self.lcd = LcdCommRevA() if not simulated else LcdSimulated()
+    def __init__(self, cfg: Config):
+        if cfg.simulated:
+            self.lcd = LcdSimulated()
+            host, port = self.lcd.webServer.server_address
+            url = f"http://{host}:{port}"
+            print(f"Simulated LCD running at {url}")
+            webbrowser.open(url)
+        else:
+            self.lcd = LcdCommRevA()
         self.lcd.reset()
         self.lcd.initialize_comm()
-        self.lcd.set_brightness(25)
+        self.lcd.set_brightness(cfg.brightness)
         self.lcd.set_orientation(Orientation.LANDSCAPE)
 
         self.is_on = True
@@ -255,7 +265,7 @@ def run(cfg: Config, spot: spotipy.Spotify):
 
     while running:
         try:
-            screen = Screen(simulated=False)
+            screen = Screen(cfg)
 
             for _ in ticker(1):
                 if not running:
