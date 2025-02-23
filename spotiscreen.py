@@ -99,6 +99,10 @@ def main():
         ),
     )
     spot = spotipy.Spotify(client_credentials_manager=credentials_manager)
+    # spotipy doesn't actually try to connect until an API call is made, so
+    # let's do a call just to make sure everything works and run the auth flow
+    # if needed, before trying to connect to the screen
+    spot.current_playback()
 
     run(cfg, spot)
 
