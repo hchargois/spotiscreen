@@ -7,15 +7,45 @@ from functools import lru_cache
 import signal
 from typing import Generator
 import webbrowser
+import logging
+import inspect
 
 from PIL import Image
 import spotipy
 import xdg
 import requests
+from loguru import logger
 from smartscreen_driver.lcd_comm_rev_a import LcdCommRevA, Orientation
 from smartscreen_driver.lcd_simulated import LcdSimulated
 from pidili import Pidili
 from pidili.widgets import Widget, Text, Img, Rect, ProgressBar
+
+
+class InterceptHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        # Get corresponding Loguru level if it exists.
+        try:
+            level: str | int = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Find caller from where originated the logged message.
+        frame, depth = inspect.currentframe(), 0
+        while frame:
+            filename = frame.f_code.co_filename
+            is_logging = filename == logging.__file__
+            is_frozen = "importlib" in filename and "_bootstrap" in filename
+            if depth > 0 and not (is_logging or is_frozen):
+                break
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
+
+
+logging.basicConfig(handlers=[InterceptHandler()], level=logging.INFO, force=True)
 
 
 @dataclass
@@ -32,10 +62,10 @@ class Config:
             with open(path) as f:
                 return cls(**json.load(f))
         except FileNotFoundError:
-            print(f"No config file found, creating one in {path}")
+            logger.info(f"No config file found, creating one in {path}")
             return cls()
         except Exception as e:
-            print(f"Error loading config, falling back to defaults: {e}")
+            logger.error(f"Error loading config, falling back to defaults: {e}")
             return cls()
 
     def save(self, path: os.PathLike):
@@ -79,7 +109,7 @@ class Screen:
             self.lcd = LcdSimulated()
             host, port = self.lcd.webServer.server_address
             url = f"http://{host}:{port}"
-            print(f"Simulated LCD running at {url}")
+            logger.info(f"Simulated LCD running at {url}")
             webbrowser.open(url)
         else:
             self.lcd = LcdCommRevA()
@@ -137,7 +167,7 @@ class NowPlayingState:
         try:
             album_art_img = download_image(album_art_url)
         except Exception as e:
-            print(f"Error downloading album art: {e}")
+            logger.warning(f"Error downloading album art: {e}")
             album_art_img = None
 
         return cls(
@@ -252,12 +282,13 @@ def build_scene(cfg: Config, size: tuple[int, int], state: NowPlayingState) -> W
 
 
 def run(cfg: Config, spot: spotipy.Spotify):
+    logger.info("Starting")
     running = True
     screen = None
 
     def signal_handler(signum, frame):
         nonlocal running
-        print(f"\nReceived signal {signum}, shutting down...")
+        logger.info(f"Received signal {signum}, shutting down...")
         running = False
 
     # Register signal handlers
@@ -267,6 +298,7 @@ def run(cfg: Config, spot: spotipy.Spotify):
     while running:
         try:
             screen = Screen(cfg)
+            logger.info("Screen initialized, now running...")
 
             for _ in ticker(1):
                 if not running:
@@ -282,15 +314,15 @@ def run(cfg: Config, spot: spotipy.Spotify):
                 screen.update(scene)
 
         except Exception as e:
-            print(f"Error occurred: {e}")
-            print("Retrying in 5 seconds...")
+            logger.error(f"Error occurred: {e}")
+            logger.info("Retrying in 5 seconds...")
             if running:
                 time.sleep(5)
 
     # Clean up resources
     if screen:
         screen.off()
-    print("Shutdown complete")
+    logger.info("Shutdown complete")
 
 
 if __name__ == "__main__":

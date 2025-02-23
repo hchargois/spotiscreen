@@ -5,6 +5,7 @@ description = "Display your Spotify's currently playing song on a low-cost USB s
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "loguru>=0.7.3",
     "pidili>=0.1.0",
     "requests>=2.32.3",
     "smartscreen-driver>=0.2.3",
