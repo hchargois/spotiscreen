@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import requests
 from io import BytesIO
 from functools import lru_cache
@@ -17,6 +17,29 @@ from pidili import Pidili
 from pidili.widgets import Widget, Text, Img, Rect, ProgressBar
 
 
+@dataclass
+class Config:
+    client_id: str = ""
+    redirect_uri: str = ""
+    font: str = "DejaVuSans.ttf"
+
+    @classmethod
+    def load(cls, path: os.PathLike) -> "Config":
+        try:
+            with open(path) as f:
+                return cls(**json.load(f))
+        except FileNotFoundError:
+            print(f"No config file found, creating one in {path}")
+            return cls()
+        except Exception as e:
+            print(f"Error loading config, falling back to defaults: {e}")
+            return cls()
+
+    def save(self, path: os.PathLike):
+        with open(path, "w") as f:
+            json.dump(asdict(self), f, indent=2)
+
+
 def main():
     app_config_dir = xdg.xdg_config_home() / "spotiscreen"
     os.makedirs(app_config_dir, exist_ok=True)
@@ -24,30 +47,27 @@ def main():
     config_file = app_config_dir / "config.json"
     token_file = app_config_dir / "token.json"
 
-    # Load or create config file
-    if config_file.exists():
-        with open(config_file) as f:
-            config = json.load(f)
-        client_id = config["client_id"]
-    else:
-        print(f"No config file found, creating one in {config_file}")
-        client_id = input("Please enter your Spotify app's client ID: ").strip()
-        config = {"client_id": client_id}
-        with open(config_file, "w") as f:
-            json.dump(config, f, indent=2)
+    cfg = Config.load(config_file)
+    if not cfg.client_id:
+        cfg.client_id = input("Please enter your Spotify app's client ID: ").strip()
+    if not cfg.redirect_uri:
+        cfg.redirect_uri = input(
+            "Please enter your Spotify app's redirect URI: "
+        ).strip()
+    cfg.save(config_file)
 
     scope = "user-read-playback-state"
     credentials_manager = spotipy.oauth2.SpotifyPKCE(
         scope=scope,
-        client_id=client_id,
-        redirect_uri="http://localhost:3000",
+        client_id=cfg.client_id,
+        redirect_uri=cfg.redirect_uri,
         cache_handler=spotipy.cache_handler.CacheFileHandler(
             cache_path=str(token_file)
         ),
     )
     spot = spotipy.Spotify(client_credentials_manager=credentials_manager)
 
-    run(spot)
+    run(cfg, spot)
 
 
 class Screen:
@@ -132,9 +152,6 @@ def seconds_to_min_secs(seconds: int) -> str:
     return f"{minutes}:{seconds:02d}"
 
 
-font = "DejaVuSans.ttf"
-
-
 def ticker(interval: float) -> Generator[None, None, None]:
     next_tick = time.time()
     while True:
@@ -146,7 +163,7 @@ def ticker(interval: float) -> Generator[None, None, None]:
             time.sleep(next_tick - now)
 
 
-def build_scene(size: tuple[int, int], state: NowPlayingState) -> Widget:
+def build_scene(cfg: Config, size: tuple[int, int], state: NowPlayingState) -> Widget:
     scene = Rect(size, fill=(0, 0, 0))
     if state.album_art_img:
         scene.add(
@@ -162,7 +179,7 @@ def build_scene(size: tuple[int, int], state: NowPlayingState) -> Widget:
         Text(
             seconds_to_min_secs(int(state.progress_seconds)),
             color=(200, 200, 200),
-            font=font,
+            font=cfg.font,
             font_size=20,
         ),
     )
@@ -171,7 +188,7 @@ def build_scene(size: tuple[int, int], state: NowPlayingState) -> Widget:
         Text(
             seconds_to_min_secs(int(state.duration_seconds)),
             color=(200, 200, 200),
-            font=font,
+            font=cfg.font,
             font_size=20,
             anchor="ra",
         ),
@@ -181,7 +198,7 @@ def build_scene(size: tuple[int, int], state: NowPlayingState) -> Widget:
         Text(
             f"{state.track_number} / {state.total_tracks}",
             color=(200, 200, 200),
-            font=font,
+            font=cfg.font,
             font_size=20,
             anchor="ma",
         ),
@@ -189,7 +206,7 @@ def build_scene(size: tuple[int, int], state: NowPlayingState) -> Widget:
     album = Text(
         state.album,
         color=(200, 200, 200),
-        font=font,
+        font=cfg.font,
         font_size=16,
         max_width=215,
     )
@@ -203,7 +220,7 @@ def build_scene(size: tuple[int, int], state: NowPlayingState) -> Widget:
         Text(
             state.artist,
             color=(255, 255, 255),
-            font=font,
+            font=cfg.font,
             font_size=24,
             max_width=215,
         ),
@@ -212,7 +229,7 @@ def build_scene(size: tuple[int, int], state: NowPlayingState) -> Widget:
         (265, 255),
         Text(
             state.track_name,
-            font=font,
+            font=cfg.font,
             font_size=20,
             max_width=215,
             anchor="ld",
@@ -222,7 +239,7 @@ def build_scene(size: tuple[int, int], state: NowPlayingState) -> Widget:
     return scene
 
 
-def run(spot: spotipy.Spotify):
+def run(cfg: Config, spot: spotipy.Spotify):
     running = True
     screen = None
 
@@ -249,7 +266,7 @@ def run(spot: spotipy.Spotify):
                     continue
                 screen.on()
                 now_playing_state = NowPlayingState.from_api_response(current_playback)
-                scene = build_scene(screen.size(), now_playing_state)
+                scene = build_scene(cfg, screen.size(), now_playing_state)
                 screen.update(scene)
 
         except Exception as e:
