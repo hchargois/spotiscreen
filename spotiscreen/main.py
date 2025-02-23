@@ -126,8 +126,8 @@ class NowPlayingState:
     album: str
     album_art_url: str
     album_art_img: Image.Image | None
-    progress_seconds: int
-    duration_seconds: int
+    progress_ms: int
+    duration_ms: int
     track_number: int
     total_tracks: int
 
@@ -144,8 +144,8 @@ class NowPlayingState:
             artist=api_resp["item"]["artists"][0]["name"],
             track_name=api_resp["item"]["name"],
             album=api_resp["item"]["album"]["name"],
-            progress_seconds=api_resp["progress_ms"] / 1000,
-            duration_seconds=api_resp["item"]["duration_ms"] / 1000,
+            progress_ms=api_resp["progress_ms"],
+            duration_ms=api_resp["item"]["duration_ms"],
             track_number=api_resp["item"]["track_number"],
             total_tracks=api_resp["item"]["album"]["total_tracks"],
             album_art_url=album_art_url,
@@ -153,10 +153,11 @@ class NowPlayingState:
         )
 
     def progress_percent(self) -> float:
-        return self.progress_seconds / self.duration_seconds * 100
+        return self.progress_ms / self.duration_ms * 100
 
 
-def seconds_to_min_secs(seconds: int) -> str:
+def ms_to_min_secs(ms: int) -> str:
+    seconds = ms // 1000
     minutes = seconds // 60
     seconds = seconds % 60
     return f"{minutes}:{seconds:02d}"
@@ -188,7 +189,7 @@ def build_scene(cfg: Config, size: tuple[int, int], state: NowPlayingState) -> W
     scene.add(
         (5, 290),
         Text(
-            seconds_to_min_secs(int(state.progress_seconds)),
+            ms_to_min_secs(int(state.progress_ms)),
             color=(200, 200, 200),
             font=cfg.font,
             font_size=20,
@@ -197,7 +198,7 @@ def build_scene(cfg: Config, size: tuple[int, int], state: NowPlayingState) -> W
     scene.add(
         (475, 290),
         Text(
-            seconds_to_min_secs(int(state.duration_seconds)),
+            ms_to_min_secs(int(state.duration_ms)),
             color=(200, 200, 200),
             font=cfg.font,
             font_size=20,
