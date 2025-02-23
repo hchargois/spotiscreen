@@ -52,7 +52,6 @@ def main():
 
 
 class Screen:
-    # TODO integrate the Pidili in this class
     def __init__(self, simulated: bool = False):
         self.lcd = LcdCommRevA() if not simulated else LcdSimulated()
         self.lcd.reset()
@@ -61,13 +60,12 @@ class Screen:
         self.lcd.set_orientation(Orientation.LANDSCAPE)
 
         self.is_on = True
-
-    def paint(self, img: Image.Image, pos: tuple[int, int]):
-        self.lcd.paint(img, pos)
+        self.pdl = Pidili(self.lcd.paint)
 
     def off(self):
         if not self.is_on:
             return
+        self.pdl.reset()
         self.lcd.screen_off()
         self.lcd.clear()
         self.is_on = False
@@ -80,6 +78,9 @@ class Screen:
 
     def size(self) -> tuple[int, int]:
         return self.lcd.size()
+
+    def update(self, scene: Widget):
+        self.pdl.update(scene)
 
 
 @lru_cache(maxsize=32)
@@ -223,7 +224,6 @@ def run(spot: spotipy.Spotify):
     while running:
         try:
             screen = Screen(simulated=False)
-            pdl = Pidili(screen.paint)
 
             for _ in ticker(1):
                 if not running:
@@ -231,13 +231,12 @@ def run(spot: spotipy.Spotify):
                 current_playback = spot.current_playback()
                 if current_playback is None:
                     screen.off()
-                    pdl.reset()
                     time.sleep(5)
                     continue
                 screen.on()
                 now_playing_state = NowPlayingState(current_playback)
                 scene = build_scene(screen.size(), now_playing_state)
-                pdl.update(scene)
+                screen.update(scene)
 
         except Exception as e:
             print(f"Error occurred: {e}")
