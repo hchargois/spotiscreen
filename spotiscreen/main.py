@@ -273,7 +273,7 @@ def run(cfg: Config, spot: spotipy.Spotify):
                 current_playback = spot.current_playback()
                 if current_playback is None:
                     screen.off()
-                    time.sleep(5)
+                    time.sleep(5)  # poll less often when nothing is playing
                     continue
                 screen.on()
                 now_playing_state = NowPlayingState.from_api_response(current_playback)
