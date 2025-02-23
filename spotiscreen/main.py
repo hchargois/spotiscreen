@@ -6,6 +6,7 @@ import requests
 from io import BytesIO
 from functools import lru_cache
 import signal
+from typing import Generator
 
 from PIL import Image
 import spotipy
@@ -14,8 +15,6 @@ from smartscreen_driver.lcd_comm_rev_a import LcdCommRevA, Orientation
 from smartscreen_driver.lcd_simulated import LcdSimulated
 from pidili import Pidili
 from pidili.widgets import Widget, Text, Img, Rect, ProgressBar
-
-from spotiscreen.ticker import ticker
 
 
 def main():
@@ -92,7 +91,6 @@ def download_image(url: str) -> Image.Image:
 
 @dataclass
 class NowPlayingState:
-    # TODO remove the response parsing from this class (?) or at least move it to a "from_response" method
     artist: str
     track_name: str
     album: str
@@ -103,20 +101,26 @@ class NowPlayingState:
     track_number: int
     total_tracks: int
 
-    def __init__(self, api_resp: dict):
-        self.artist = api_resp["item"]["artists"][0]["name"]
-        self.track_name = api_resp["item"]["name"]
-        self.album = api_resp["item"]["album"]["name"]
-        self.album_art_url = api_resp["item"]["album"]["images"][0]["url"]
-        self.progress_seconds = api_resp["progress_ms"] / 1000
-        self.duration_seconds = api_resp["item"]["duration_ms"] / 1000
-        self.track_number = api_resp["item"]["track_number"]
-        self.total_tracks = api_resp["item"]["album"]["total_tracks"]
+    @classmethod
+    def from_api_response(cls, api_resp: dict) -> "NowPlayingState":
+        album_art_url = api_resp["item"]["album"]["images"][0]["url"]
         try:
-            self.album_art_img = download_image(self.album_art_url)
+            album_art_img = download_image(album_art_url)
         except Exception as e:
             print(f"Error downloading album art: {e}")
-            self.album_art_img = None
+            album_art_img = None
+
+        return cls(
+            artist=api_resp["item"]["artists"][0]["name"],
+            track_name=api_resp["item"]["name"],
+            album=api_resp["item"]["album"]["name"],
+            progress_seconds=api_resp["progress_ms"] / 1000,
+            duration_seconds=api_resp["item"]["duration_ms"] / 1000,
+            track_number=api_resp["item"]["track_number"],
+            total_tracks=api_resp["item"]["album"]["total_tracks"],
+            album_art_url=album_art_url,
+            album_art_img=album_art_img,
+        )
 
     def progress_percent(self) -> float:
         return self.progress_seconds / self.duration_seconds * 100
@@ -131,7 +135,17 @@ def seconds_to_min_secs(seconds: int) -> str:
 font = "DejaVuSans.ttf"
 
 
-# TODO move this to a dedicated module
+def ticker(interval: float) -> Generator[None, None, None]:
+    next_tick = time.time()
+    while True:
+        now = time.time()
+        if now >= next_tick:
+            next_tick = max(next_tick + interval, now + interval)
+            yield
+        else:
+            time.sleep(next_tick - now)
+
+
 def build_scene(size: tuple[int, int], state: NowPlayingState) -> Widget:
     scene = Rect(size, fill=(0, 0, 0))
     if state.album_art_img:
@@ -234,7 +248,7 @@ def run(spot: spotipy.Spotify):
                     time.sleep(5)
                     continue
                 screen.on()
-                now_playing_state = NowPlayingState(current_playback)
+                now_playing_state = NowPlayingState.from_api_response(current_playback)
                 scene = build_scene(screen.size(), now_playing_state)
                 screen.update(scene)
 
