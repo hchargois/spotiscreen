@@ -218,7 +218,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pidili" },
+    { name = "pidili", specifier = ">=0.1.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "smartscreen-driver", specifier = ">=0.2.3" },
     { name = "spotipy", specifier = ">=2.25.0" },
