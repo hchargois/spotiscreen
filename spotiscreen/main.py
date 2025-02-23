@@ -153,14 +153,15 @@ def seconds_to_min_secs(seconds: int) -> str:
 
 
 def ticker(interval: float) -> Generator[None, None, None]:
-    next_tick = time.time()
+    next_tick = time.time() + interval
     while True:
+        yield
         now = time.time()
-        if now >= next_tick:
-            next_tick = max(next_tick + interval, now + interval)
-            yield
+        if now > next_tick:
+            next_tick = now + interval
         else:
             time.sleep(next_tick - now)
+            next_tick += interval
 
 
 def build_scene(cfg: Config, size: tuple[int, int], state: NowPlayingState) -> Widget:
