@@ -2,7 +2,6 @@ import os
 import json
 import time
 from dataclasses import dataclass, asdict
-import requests
 from io import BytesIO
 from functools import lru_cache
 import signal
@@ -12,6 +11,7 @@ import webbrowser
 from PIL import Image
 import spotipy
 import xdg
+import requests
 from smartscreen_driver.lcd_comm_rev_a import LcdCommRevA, Orientation
 from smartscreen_driver.lcd_simulated import LcdSimulated
 from pidili import Pidili

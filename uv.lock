@@ -210,6 +210,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pidili" },
+    { name = "requests" },
     { name = "smartscreen-driver" },
     { name = "spotipy" },
     { name = "xdg" },
@@ -218,6 +219,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "pidili" },
+    { name = "requests", specifier = ">=2.32.3" },
     { name = "smartscreen-driver", specifier = ">=0.2.3" },
     { name = "spotipy", specifier = ">=2.25.0" },
     { name = "xdg", specifier = ">=6.0.0" },
