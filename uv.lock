@@ -116,15 +116,15 @@ wheels = [
 
 [[package]]
 name = "pidili"
-version = "0.1.0"
+version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "pillow" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/80/5e/cacfe961c8e7a6d217859931b6cc0f06e4538adc8c0f1174eef4cc4f1af4/pidili-0.1.0.tar.gz", hash = "sha256:4edb4cea8066b2243991a1c6ca04a6c33ce8f15b8d2d87562ac8e3c0231e7f12", size = 22074 }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/d5/414095b6c50219d969da6d996a9a4db9e611fdb731df81d20a025b1e7ce5/pidili-0.1.1.tar.gz", hash = "sha256:84712634fc6844994833d3c29b0edc62d0e6dfc8b2bf1e878c4700fe9725ee87", size = 22152 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/7e/6a45ed82e3b1c676bd7d1201ad54cd02160209c39ce246fe270ec93c1aab/pidili-0.1.0-py3-none-any.whl", hash = "sha256:364f7952849998405c2c338b890c83710545f97b5785d9e56d98d8ac300a88fa", size = 14542 },
+    { url = "https://files.pythonhosted.org/packages/01/f1/ce4333764a3543c8c216580ff546f7d2cf3b8e2c6ea68482bd3d5590685c/pidili-0.1.1-py3-none-any.whl", hash = "sha256:9dd73c17a3d77e6d9b0755e86fe9158815d178751179fc9251c7459ec97729d9", size = 14631 },
 ]
 
 [[package]]
@@ -242,7 +242,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
-    { name = "pidili", specifier = ">=0.1.0" },
+    { name = "pidili", specifier = ">=0.1.1" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "smartscreen-driver", specifier = ">=0.2.3" },
     { name = "spotipy", specifier = ">=2.25.0" },
